@@ -27,12 +27,6 @@ namespace SpotiHack
         static AutorizationCodeAuth auth;
         static void Main(string[] args)
         {
-
-            //  new Program().youtubeSearch().Wait();
-            //DownloadAudio();
-           // return;
-
-            //Create the auth object
             auth = new AutorizationCodeAuth()
             {
                 //Your client Id
@@ -50,17 +44,13 @@ namespace SpotiHack
             auth.DoAuth();
 
             Thread.Sleep(60000);
-          //  auth.StopHttpServer();
-         //   Console.WriteLine("Too long, didnt respond, exiting now...");
+
         }
 
         private static void auth_OnResponseReceivedEvent(AutorizationCodeAuthResponse response)
-        {
-            //Stop the HTTP Server, done.
+        {  
             auth.StopHttpServer();
 
-            //NEVER DO THIS! You would need to provide the ClientSecret.
-            //You would need to do it e.g via a PHP-Script.
             Token token = auth.ExchangeAuthCode(response.Code, "9fde3d021e9f424e8740f1ab3f755bf6");
 
             var spotify = new SpotifyWebAPI()
@@ -69,26 +59,34 @@ namespace SpotiHack
                 AccessToken = token.AccessToken
             };
 
-           // var tracks = spotify.GetPlaylistTracks("12101170232", "3ExiQTtIAHceYJYXfI5ysH");
-            var tracks = spotify.GetPlaylistTracks("12101170232", "7ydOkN0ppweUlsiMGQlFjH");
-            var tracksList = new List<string>();
-            // tracks.Items.Sort(i => i.AddedAt )
+            /* CONSTS */
+            const string userID = "12101170232";
+            const string playlistID = "3ExiQTtIAHceYJYXfI5ysH"; // "7ydOkN0ppweUlsiMGQlFjH" //dev
+            var afterDate = new DateTime(2017, 11, 20);
+            /**/
+
+            var tracks = spotify.GetPlaylistTracks(userID, playlistID);
+            var tracksList = new List<TrackModel>();
+
+            
+
+            tracks.Items = tracks.Items.Where(da => da.AddedAt >= afterDate).ToList();
 
             if (tracks.Total >= 100)
             {
                 for (int i = 100; i <= tracks.Total + 100; i += 100)
                 {
                     tracks.Items.ForEach(track => Console.WriteLine(track.Track.Artists.FirstOrDefault().Name + " - " + track.Track.Name));
-                    tracks.Items.ForEach(track => tracksList.Add(track.Track.Artists.FirstOrDefault().Name + " " + track.Track.Name));
-                    tracks = spotify.GetPlaylistTracks("12101170232", "7ydOkN0ppweUlsiMGQlFjH", "", 100, i);
+                    tracks.Items.ForEach(track => tracksList.Add(new TrackModel() { Artist = track.Track.Artists.FirstOrDefault().Name, Name = track.Track.Name }));
+                    tracks = spotify.GetPlaylistTracks(userID, "3ExiQTtIAHceYJYXfI5ysH", "", 100, i);
+                    tracks.Items = tracks.Items.OrderByDescending(d => d.AddedAt).Where(da => da.AddedAt >= afterDate).ToList();
                 }
             }
             else
             {
                 tracks.Items.ForEach(track => Console.WriteLine(track.Track.Artists.FirstOrDefault().Name + " " + track.Track.Name));
-                tracks.Items.ForEach(track => tracksList.Add(track.Track.Artists.FirstOrDefault().Name + " " + track.Track.Name));
+                tracks.Items.ForEach(track => tracksList.Add(new TrackModel() { Artist = track.Track.Artists.FirstOrDefault().Name, Name = track.Track.Name }));
             }
-
 
             Parallel.ForEach(tracksList, (track) =>
             {
@@ -100,7 +98,7 @@ namespace SpotiHack
             //With the token object, you can now make API calls
         }
 
-        private async Task youtubeSearch(string track)
+        private async Task youtubeSearch(TrackModel track , string searchTerm = null)
         {
             // Create the service.
             var youtubeService = new YouTubeService(new BaseClientService.Initializer()
@@ -110,12 +108,10 @@ namespace SpotiHack
             });
 
             var searchListRequest = youtubeService.Search.List("snippet");
-            searchListRequest.Q = track + " audio"; // Replace with your search term.
+            searchListRequest.Q = track.Artist + " " + track.Name + " audio"; // Replace with your search term.
 
-            //Special kostyl
-            if (track.Contains("Solence") || track.Contains("Death Come"))
-                searchListRequest.Q = track; // Replace with your search term.
-
+            if(!String.IsNullOrEmpty(searchTerm))
+                searchListRequest.Q = searchTerm;
 
             searchListRequest.MaxResults = 10;
             searchListRequest.Order = SearchResource.ListRequest.OrderEnum.Relevance;
@@ -123,9 +119,7 @@ namespace SpotiHack
             // Call the search.list method to retrieve results matching the specified query term.
             var searchListResponse = await searchListRequest.ExecuteAsync();
 
-            List<string> videos = new List<string>();
-            List<string> channels = new List<string>();
-            List<string> playlists = new List<string>();
+            var videos = new Dictionary<string, string>();
 
             // Add each result to the appropriate list, and then display the lists of
             // matching videos, channels, and playlists.
@@ -134,20 +128,25 @@ namespace SpotiHack
                 switch (searchResult.Id.Kind)
                 {
                     case "youtube#video":
-                        videos.Add(String.Format("{0}", searchResult.Id.VideoId));
-                        break;
-
-                    case "youtube#channel":
-                        channels.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.ChannelId));
-                        break;
-
-                    case "youtube#playlist":
-                        playlists.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.PlaylistId));
+                        videos.Add(searchResult.Id.VideoId, searchResult.Snippet.Title);
                         break;
                 }
             }
 
-            DownloadAudio(videos.FirstOrDefault(), track);
+            if (videos.FirstOrDefault().Value.ToLower().Contains(track.Artist.ToLower()) || !String.IsNullOrEmpty(searchTerm))
+            {
+                if (!videos.FirstOrDefault().Value.ToLower().Contains(track.Artist.ToLower()))
+                {
+                    Console.ForegroundColor = ConsoleColor.Green; 
+                    Console.WriteLine("WARNING: PROBABLY WRONG TRACK =( " + track.Artist + " - " + track.Name);
+                    Console.ResetColor(); 
+                }
+
+                DownloadAudio(videos.FirstOrDefault().Key, track.Artist + " - " + track.Name);
+            }   
+            else
+                new Program().youtubeSearch(track, track.Artist + " " + track.Name).Wait();
+
         }
 
         private static void DownloadAudio(string videoId, string fileName)
@@ -155,22 +154,21 @@ namespace SpotiHack
             string url = "https://youtubemp3api.com/@grab?vidID="+ videoId + "&format=mp3&streams=mp3&api=button";
             string referer = "https://youtubemp3api.com/@api/button/mp3/" + videoId;
 
-            // Создаём объект WebClient
             using (var webClient = new WebClient())
             {
                 webClient.Headers.Add("Referer", referer);
-                // Выполняем запрос по адресу и получаем ответ в виде строки
+                
                 var response = webClient.DownloadData(url);
                 CQ cq = System.Text.Encoding.Default.GetString(response);
 
                 var mp3Url = cq["a.q320"].FirstOrDefault().GetAttribute("href");
    
-                Console.WriteLine(mp3Url);
+                Console.WriteLine("STARTED: " + fileName);
 
                 var mp3File = webClient.DownloadData(mp3Url);
               
                 FileStream fileStream = new FileStream(
-                  $@"C:/Users/Master/Documents/SpotiHack/Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
+                  $@"../../../Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
                   FileAccess.ReadWrite, FileShare.None);
                 fileStream.Write(mp3File, 0, mp3File.Length);
                 fileStream.Close();
@@ -178,5 +176,11 @@ namespace SpotiHack
             }
         }
 
+    }
+
+    public class TrackModel
+    {
+        public string Artist { get; set; }
+        public string Name { get; set; }
     }
 }

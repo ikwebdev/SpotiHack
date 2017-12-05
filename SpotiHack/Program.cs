@@ -159,14 +159,16 @@ namespace SpotiHack
                 webClient.Headers.Add("Referer", referer);
                 
                 var response = webClient.DownloadData(url);
-                CQ cq = System.Text.Encoding.Default.GetString(response);
+                CQ cq = Encoding.Default.GetString(response);
 
                 var mp3Url = cq["a.q320"].FirstOrDefault().GetAttribute("href");
    
                 Console.WriteLine("STARTED: " + fileName);
 
                 var mp3File = webClient.DownloadData(mp3Url);
-              
+
+                Directory.CreateDirectory(@"../../../Downloads/");
+
                 FileStream fileStream = new FileStream(
                   $@"../../../Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
                   FileAccess.ReadWrite, FileShare.None);

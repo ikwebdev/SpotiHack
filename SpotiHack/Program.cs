@@ -9,6 +9,17 @@ using SpotifyAPI.Web.Auth; //All Authentication-related classes
 using SpotifyAPI.Web.Enums; //Enums
 using SpotifyAPI.Web.Models; //Models for the JSON-responses
 
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Services;
+using Google.Apis.Upload;
+using Google.Apis.Util.Store;
+using Google.Apis.YouTube.v3;
+using Google.Apis.YouTube.v3.Data;
+using YoutubeExtractor;
+using System.IO;
+using System.Net;
+using CsQuery;
+
 namespace SpotiHack
 {
     class Program
@@ -16,6 +27,11 @@ namespace SpotiHack
         static AutorizationCodeAuth auth;
         static void Main(string[] args)
         {
+
+            //  new Program().youtubeSearch().Wait();
+            DownloadAudio();
+            return;
+
             //Create the auth object
             auth = new AutorizationCodeAuth()
             {
@@ -69,6 +85,72 @@ namespace SpotiHack
 
             Console.ReadKey();
             //With the token object, you can now make API calls
+        }
+
+        private async Task youtubeSearch()
+        {
+
+            // Create the service.
+            var youtubeService = new YouTubeService(new BaseClientService.Initializer()
+            {
+                ApiKey = "AIzaSyAiDxF6OIAwIywSVJBu8vFLO7yp0DRWAwc",
+                ApplicationName = "SpotiHack"
+            });
+
+            var searchListRequest = youtubeService.Search.List("snippet");
+            searchListRequest.Q = "Puddle Of Mudd Blurry"; // Replace with your search term.
+            searchListRequest.MaxResults = 10;
+
+            // Call the search.list method to retrieve results matching the specified query term.
+            var searchListResponse = await searchListRequest.ExecuteAsync();
+
+            List<string> videos = new List<string>();
+            List<string> channels = new List<string>();
+            List<string> playlists = new List<string>();
+
+            // Add each result to the appropriate list, and then display the lists of
+            // matching videos, channels, and playlists.
+            foreach (var searchResult in searchListResponse.Items)
+            {
+                switch (searchResult.Id.Kind)
+                {
+                    case "youtube#video":
+                        videos.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.VideoId));
+                        break;
+
+                    case "youtube#channel":
+                        channels.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.ChannelId));
+                        break;
+
+                    case "youtube#playlist":
+                        playlists.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.PlaylistId));
+                        break;
+                }
+            }
+        }
+
+        private static void DownloadAudio()
+        {
+            string url = "https://youtubemp3api.com/@grab?vidID=7wtfhZwyrcc&format=mp3&streams=mp3&api=button";
+            string referer = "https://youtubemp3api.com/@api/button/mp3/7wtfhZwyrcc";
+
+            // Создаём объект WebClient
+            using (var webClient = new WebClient())
+            {
+                webClient.Headers.Add("Referer", referer);
+                // Выполняем запрос по адресу и получаем ответ в виде строки
+                var response = webClient.DownloadData(url);
+                CQ cq = System.Text.Encoding.Default.GetString(response);
+
+                var mp3Url = cq["a.q320"].FirstOrDefault().GetAttribute("href");
+   
+                Console.WriteLine(mp3Url);
+
+
+                var mp3File = webClient.DownloadData(mp3Url);
+
+                File.WriteAllBytes("C:/Users/Master/Documents/SpotiHack/Downloads/test.mp3", mp3File);
+            }
         }
 
     }

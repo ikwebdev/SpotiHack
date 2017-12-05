@@ -1,24 +1,18 @@
-﻿using System;
+﻿using CsQuery;
+using Google.Apis.Services;
+using Google.Apis.YouTube.v3;
+using SpotifyAPI.Web; 
+using SpotifyAPI.Web.Auth; 
+using SpotifyAPI.Web.Enums; 
+using SpotifyAPI.Web.Models; 
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using SpotifyAPI.Web; //Base Namespace
-using SpotifyAPI.Web.Auth; //All Authentication-related classes
-using SpotifyAPI.Web.Enums; //Enums
-using SpotifyAPI.Web.Models; //Models for the JSON-responses
-
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
-using Google.Apis.Upload;
-using Google.Apis.Util.Store;
-using Google.Apis.YouTube.v3;
-using Google.Apis.YouTube.v3.Data;
-using YoutubeExtractor;
-using System.IO;
-using System.Net;
-using CsQuery;
 
 namespace SpotiHack
 {

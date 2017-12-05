@@ -1,10 +1,10 @@
 ﻿using CsQuery;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
-using SpotifyAPI.Web; 
-using SpotifyAPI.Web.Auth; 
-using SpotifyAPI.Web.Enums; 
-using SpotifyAPI.Web.Models; 
+using SpotifyAPI.Web;
+using SpotifyAPI.Web.Auth;
+using SpotifyAPI.Web.Enums;
+using SpotifyAPI.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,6 +13,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using TagLib;
 
 namespace SpotiHack
 {
@@ -42,7 +43,7 @@ namespace SpotiHack
         }
 
         private static void auth_OnResponseReceivedEvent(AutorizationCodeAuthResponse response)
-        {  
+        {
             auth.StopHttpServer();
 
             Token token = auth.ExchangeAuthCode(response.Code, "9fde3d021e9f424e8740f1ab3f755bf6");
@@ -55,14 +56,15 @@ namespace SpotiHack
 
             /* CONSTS */
             const string userID = "12101170232";
-            const string playlistID = "3ExiQTtIAHceYJYXfI5ysH"; // "7ydOkN0ppweUlsiMGQlFjH" //dev
-            var afterDate = new DateTime(2017, 11, 20);
+            const string playlistID = "7ydOkN0ppweUlsiMGQlFjH"; // "7ydOkN0ppweUlsiMGQlFjH" //dev 3ExiQTtIAHceYJYXfI5ysH //prod
+            var afterDate = new DateTime(2017, 05, 23);
+            //var afterDate = new DateTime(2017, 11, 20);
             /**/
 
             var tracks = spotify.GetPlaylistTracks(userID, playlistID);
             var tracksList = new List<TrackModel>();
 
-            
+
 
             tracks.Items = tracks.Items.Where(da => da.AddedAt >= afterDate).ToList();
 
@@ -71,15 +73,25 @@ namespace SpotiHack
                 for (int i = 100; i <= tracks.Total + 100; i += 100)
                 {
                     tracks.Items.ForEach(track => Console.WriteLine(track.Track.Artists.FirstOrDefault().Name + " - " + track.Track.Name));
-                    tracks.Items.ForEach(track => tracksList.Add(new TrackModel() { Artist = track.Track.Artists.FirstOrDefault().Name, Name = track.Track.Name }));
-                    tracks = spotify.GetPlaylistTracks(userID, "3ExiQTtIAHceYJYXfI5ysH", "", 100, i);
+                    tracks.Items.ForEach(track => tracksList.Add(new TrackModel() {
+                        Artist = track.Track.Artists.FirstOrDefault().Name,
+                        Album = track.Track.Album.Name,
+                        Name = track.Track.Name,
+                        Images = track.Track.Album.Images
+                    }));
+                    tracks = spotify.GetPlaylistTracks(userID, playlistID, "", 100, i);
                     tracks.Items = tracks.Items.OrderByDescending(d => d.AddedAt).Where(da => da.AddedAt >= afterDate).ToList();
                 }
             }
             else
             {
                 tracks.Items.ForEach(track => Console.WriteLine(track.Track.Artists.FirstOrDefault().Name + " " + track.Track.Name));
-                tracks.Items.ForEach(track => tracksList.Add(new TrackModel() { Artist = track.Track.Artists.FirstOrDefault().Name, Name = track.Track.Name }));
+                tracks.Items.ForEach(track => tracksList.Add(new TrackModel() {
+                    Artist = track.Track.Artists.FirstOrDefault().Name,
+                    Album = track.Track.Album.Name,
+                    Name = track.Track.Album.Name,
+                    Images = track.Track.Album.Images
+                }));
             }
 
             Parallel.ForEach(tracksList, (track) =>
@@ -92,7 +104,7 @@ namespace SpotiHack
             //With the token object, you can now make API calls
         }
 
-        private async Task youtubeSearch(TrackModel track , string searchTerm = null)
+        private async Task youtubeSearch(TrackModel track, string searchTerm = null)
         {
             // Create the service.
             var youtubeService = new YouTubeService(new BaseClientService.Initializer()
@@ -104,7 +116,7 @@ namespace SpotiHack
             var searchListRequest = youtubeService.Search.List("snippet");
             searchListRequest.Q = track.Artist + " " + track.Name + " audio"; // Replace with your search term.
 
-            if(!String.IsNullOrEmpty(searchTerm))
+            if (!String.IsNullOrEmpty(searchTerm))
                 searchListRequest.Q = searchTerm;
 
             searchListRequest.MaxResults = 10;
@@ -131,52 +143,100 @@ namespace SpotiHack
             {
                 if (!videos.FirstOrDefault().Value.ToLower().Contains(track.Artist.ToLower()))
                 {
-                    Console.ForegroundColor = ConsoleColor.Green; 
+                    Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("WARNING: PROBABLY WRONG TRACK =( " + track.Artist + " - " + track.Name);
-                    Console.ResetColor(); 
+                    Console.ResetColor();
                 }
 
-                DownloadAudio(videos.FirstOrDefault().Key, track.Artist + " - " + track.Name);
-            }   
+                DownloadAudio(videos.FirstOrDefault().Key, track);
+            }
             else
                 new Program().youtubeSearch(track, track.Artist + " " + track.Name).Wait();
 
         }
 
-        private static void DownloadAudio(string videoId, string fileName)
+        private static void DownloadAudio(string videoId, TrackModel track)
         {
-            string url = "https://youtubemp3api.com/@grab?vidID="+ videoId + "&format=mp3&streams=mp3&api=button";
+            string url = "https://youtubemp3api.com/@grab?vidID=" + videoId + "&format=mp3&streams=mp3&api=button";
             string referer = "https://youtubemp3api.com/@api/button/mp3/" + videoId;
+            var fileName = CleanFileName(track.Artist + " - " + track.Name);
 
-            using (var webClient = new WebClient())
+            try
             {
-                webClient.Headers.Add("Referer", referer);
-                
-                var response = webClient.DownloadData(url);
-                CQ cq = Encoding.Default.GetString(response);
+                using (var webClient = new MyWebClient())
+                {
+                    webClient.Headers.Add("Referer", referer);
 
-                var mp3Url = cq["a.q320"].FirstOrDefault().GetAttribute("href");
-   
-                Console.WriteLine("STARTED: " + fileName);
+                    var response = webClient.DownloadData(url);
+                    CQ cq = Encoding.Default.GetString(response);
 
-                var mp3File = webClient.DownloadData(mp3Url);
+                    var mp3Url = cq["a.q320"].FirstOrDefault().GetAttribute("href");
 
-                Directory.CreateDirectory(@"../../../Downloads/");
+                    Console.WriteLine("STARTED: " + fileName);
 
-                FileStream fileStream = new FileStream(
-                  $@"../../../Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
-                  FileAccess.ReadWrite, FileShare.None);
-                fileStream.Write(mp3File, 0, mp3File.Length);
-                fileStream.Close();
+                    var mp3File = webClient.DownloadData(mp3Url);
 
+                    Directory.CreateDirectory(@"../../../Downloads/");
+
+                    FileStream fileStream = new FileStream(
+                      $@"../../../Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
+                      FileAccess.ReadWrite, FileShare.None);
+                    fileStream.Write(mp3File, 0, mp3File.Length);
+                    fileStream.Close();
+
+
+                    //Set tags
+
+                    var fileForTags = TagLib.File.Create($@"../../../Downloads/{fileName}.mp3"); // Change file path accordingly.
+
+                    fileForTags.Tag.Title = track.Name;
+                    fileForTags.Tag.Album = track.Album;
+                    fileForTags.Tag.Performers = new string[] { track.Artist };
+
+                    if(track.Images.Count > 0)
+                    {
+                        var thumbnail = webClient.DownloadData(track.Images.FirstOrDefault().Url);
+                        Picture picture = new Picture(new ByteVector(thumbnail));
+                        fileForTags.Tag.Pictures = new Picture[] { picture };
+                    }
+              
+                    // Save Changes:
+                    fileForTags.Save();
+
+                }
             }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("ERROR: when downloading or writing " + fileName);
+                Console.WriteLine("Details: " + e.Message + Environment.NewLine + e.StackTrace);
+                Console.ResetColor();
+            }
+
         }
 
+        public static string CleanFileName(string fileName)
+        {
+            return Path.GetInvalidFileNameChars().Aggregate(fileName, (current, c) => current.Replace(c.ToString(), string.Empty));
+        }
+
+    }
+
+    public class MyWebClient : WebClient
+    {
+        protected override WebRequest GetWebRequest(Uri uri)
+        {
+            WebRequest w = base.GetWebRequest(uri);
+            w.Timeout = 5 * 60 * 1000; // 5min
+            return w;
+        }
     }
 
     public class TrackModel
     {
         public string Artist { get; set; }
+        public string Album { get; set; }
         public string Name { get; set; }
+        public List<Image> Images { get; set; }
     }
 }

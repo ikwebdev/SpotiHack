@@ -51,7 +51,7 @@ namespace SpotiHack
 
             Thread.Sleep(60000);
           //  auth.StopHttpServer();
-            Console.WriteLine("Too long, didnt respond, exiting now...");
+         //   Console.WriteLine("Too long, didnt respond, exiting now...");
         }
 
         private static void auth_OnResponseReceivedEvent(AutorizationCodeAuthResponse response)
@@ -90,8 +90,12 @@ namespace SpotiHack
             }
 
 
-            tracksList.ForEach(track => new Program().youtubeSearch(track).Wait());
+            Parallel.ForEach(tracksList, (track) =>
+            {
+                new Program().youtubeSearch(track).Wait();
+            });
 
+            Console.WriteLine("Gotovo bratishka!");
             Console.ReadKey();
             //With the token object, you can now make API calls
         }
@@ -107,7 +111,14 @@ namespace SpotiHack
 
             var searchListRequest = youtubeService.Search.List("snippet");
             searchListRequest.Q = track + " audio"; // Replace with your search term.
+
+            //Special kostyl
+            if (track.Contains("Solence") || track.Contains("Death Come"))
+                searchListRequest.Q = track; // Replace with your search term.
+
+
             searchListRequest.MaxResults = 10;
+            searchListRequest.Order = SearchResource.ListRequest.OrderEnum.Relevance;
 
             // Call the search.list method to retrieve results matching the specified query term.
             var searchListResponse = await searchListRequest.ExecuteAsync();
@@ -137,8 +148,6 @@ namespace SpotiHack
             }
 
             DownloadAudio(videos.FirstOrDefault(), track);
-
-
         }
 
         private static void DownloadAudio(string videoId, string fileName)

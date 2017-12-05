@@ -29,8 +29,8 @@ namespace SpotiHack
         {
 
             //  new Program().youtubeSearch().Wait();
-            DownloadAudio();
-            return;
+            //DownloadAudio();
+           // return;
 
             //Create the auth object
             auth = new AutorizationCodeAuth()
@@ -70,8 +70,8 @@ namespace SpotiHack
             };
 
            // var tracks = spotify.GetPlaylistTracks("12101170232", "3ExiQTtIAHceYJYXfI5ysH");
-            var tracks = spotify.GetPlaylistTracks("cevig", "004GONyTxoKCxA7lYdkuyu");
-
+            var tracks = spotify.GetPlaylistTracks("12101170232", "7ydOkN0ppweUlsiMGQlFjH");
+            var tracksList = new List<string>();
             // tracks.Items.Sort(i => i.AddedAt )
 
             if (tracks.Total >= 100)
@@ -79,17 +79,25 @@ namespace SpotiHack
                 for (int i = 100; i <= tracks.Total + 100; i += 100)
                 {
                     tracks.Items.ForEach(track => Console.WriteLine(track.Track.Artists.FirstOrDefault().Name + " - " + track.Track.Name));
-                    tracks = spotify.GetPlaylistTracks("cevig", "004GONyTxoKCxA7lYdkuyu", "", 100, i);
+                    tracks.Items.ForEach(track => tracksList.Add(track.Track.Artists.FirstOrDefault().Name + " " + track.Track.Name));
+                    tracks = spotify.GetPlaylistTracks("12101170232", "7ydOkN0ppweUlsiMGQlFjH", "", 100, i);
                 }
             }
+            else
+            {
+                tracks.Items.ForEach(track => Console.WriteLine(track.Track.Artists.FirstOrDefault().Name + " " + track.Track.Name));
+                tracks.Items.ForEach(track => tracksList.Add(track.Track.Artists.FirstOrDefault().Name + " " + track.Track.Name));
+            }
+
+
+            tracksList.ForEach(track => new Program().youtubeSearch(track).Wait());
 
             Console.ReadKey();
             //With the token object, you can now make API calls
         }
 
-        private async Task youtubeSearch()
+        private async Task youtubeSearch(string track)
         {
-
             // Create the service.
             var youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
@@ -98,7 +106,7 @@ namespace SpotiHack
             });
 
             var searchListRequest = youtubeService.Search.List("snippet");
-            searchListRequest.Q = "Puddle Of Mudd Blurry"; // Replace with your search term.
+            searchListRequest.Q = track + " audio"; // Replace with your search term.
             searchListRequest.MaxResults = 10;
 
             // Call the search.list method to retrieve results matching the specified query term.
@@ -115,7 +123,7 @@ namespace SpotiHack
                 switch (searchResult.Id.Kind)
                 {
                     case "youtube#video":
-                        videos.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.VideoId));
+                        videos.Add(String.Format("{0}", searchResult.Id.VideoId));
                         break;
 
                     case "youtube#channel":
@@ -127,12 +135,16 @@ namespace SpotiHack
                         break;
                 }
             }
+
+            DownloadAudio(videos.FirstOrDefault(), track);
+
+
         }
 
-        private static void DownloadAudio()
+        private static void DownloadAudio(string videoId, string fileName)
         {
-            string url = "https://youtubemp3api.com/@grab?vidID=7wtfhZwyrcc&format=mp3&streams=mp3&api=button";
-            string referer = "https://youtubemp3api.com/@api/button/mp3/7wtfhZwyrcc";
+            string url = "https://youtubemp3api.com/@grab?vidID="+ videoId + "&format=mp3&streams=mp3&api=button";
+            string referer = "https://youtubemp3api.com/@api/button/mp3/" + videoId;
 
             // Создаём объект WebClient
             using (var webClient = new WebClient())
@@ -146,10 +158,14 @@ namespace SpotiHack
    
                 Console.WriteLine(mp3Url);
 
-
                 var mp3File = webClient.DownloadData(mp3Url);
+              
+                FileStream fileStream = new FileStream(
+                  $@"C:/Users/Master/Documents/SpotiHack/Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
+                  FileAccess.ReadWrite, FileShare.None);
+                fileStream.Write(mp3File, 0, mp3File.Length);
+                fileStream.Close();
 
-                File.WriteAllBytes("C:/Users/Master/Documents/SpotiHack/Downloads/test.mp3", mp3File);
             }
         }
 

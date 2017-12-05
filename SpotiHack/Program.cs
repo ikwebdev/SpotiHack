@@ -22,6 +22,7 @@ namespace SpotiHack
         static AutorizationCodeAuth auth;
         static void Main(string[] args)
         {
+            Console.WriteLine("Welcome bratishka at " + DateTime.Now.TimeOfDay);
             auth = new AutorizationCodeAuth()
             {
                 //Your client Id
@@ -55,16 +56,14 @@ namespace SpotiHack
             };
 
             /* CONSTS */
-            const string userID = "12101170232";
-            const string playlistID = "7ydOkN0ppweUlsiMGQlFjH"; // "7ydOkN0ppweUlsiMGQlFjH" //dev 3ExiQTtIAHceYJYXfI5ysH //prod
-            var afterDate = new DateTime(2017, 05, 23);
+            const string userID = "spotify";
+            const string playlistID = "37i9dQZF1DXcF6B6QPhFDv"; // "7ydOkN0ppweUlsiMGQlFjH" //dev 3ExiQTtIAHceYJYXfI5ysH //prod
+            var afterDate = new DateTime(2017, 10, 10);
             //var afterDate = new DateTime(2017, 11, 20);
             /**/
 
             var tracks = spotify.GetPlaylistTracks(userID, playlistID);
             var tracksList = new List<TrackModel>();
-
-
 
             tracks.Items = tracks.Items.Where(da => da.AddedAt >= afterDate).ToList();
 
@@ -99,7 +98,7 @@ namespace SpotiHack
                 new Program().youtubeSearch(track).Wait();
             });
 
-            Console.WriteLine("Gotovo bratishka!");
+            Console.WriteLine("Gotovo bratishka at " + DateTime.Now.TimeOfDay);
             Console.ReadKey();
             //With the token object, you can now make API calls
         }
@@ -144,7 +143,7 @@ namespace SpotiHack
                 if (!videos.FirstOrDefault().Value.ToLower().Contains(track.Artist.ToLower()))
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("WARNING: PROBABLY WRONG TRACK =( " + track.Artist + " - " + track.Name);
+                    Console.WriteLine(DateTime.Now.TimeOfDay + " WARNING: PROBABLY WRONG TRACK =( " + track.Artist + " - " + track.Name);
                     Console.ResetColor();
                 }
 
@@ -172,7 +171,7 @@ namespace SpotiHack
 
                     var mp3Url = cq["a.q320"].FirstOrDefault().GetAttribute("href");
 
-                    Console.WriteLine("STARTED: " + fileName);
+                    Console.WriteLine(DateTime.Now.TimeOfDay + " STARTED: " + fileName);
 
                     var mp3File = webClient.DownloadData(mp3Url);
 
@@ -208,7 +207,7 @@ namespace SpotiHack
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("ERROR: when downloading or writing " + fileName);
+                Console.WriteLine(DateTime.Now.TimeOfDay + " ERROR: when downloading or writing " + fileName);
                 Console.WriteLine("Details: " + e.Message + Environment.NewLine + e.StackTrace);
                 Console.ResetColor();
             }
@@ -227,7 +226,7 @@ namespace SpotiHack
         protected override WebRequest GetWebRequest(Uri uri)
         {
             WebRequest w = base.GetWebRequest(uri);
-            w.Timeout = 5 * 60 * 1000; // 5min
+            w.Timeout = 60 * 60 * 1000; // 5min
             return w;
         }
     }

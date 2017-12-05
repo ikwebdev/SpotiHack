@@ -40,7 +40,6 @@ namespace SpotiHack
             auth.DoAuth();
 
             Thread.Sleep(60000);
-
         }
 
         private static void auth_OnResponseReceivedEvent(AutorizationCodeAuthResponse response)
@@ -56,6 +55,7 @@ namespace SpotiHack
             };
 
             /* CONSTS */
+            //TODO: Parse playlist link like https://open.spotify.com/user/12101170232/playlist/7ydOkN0ppweUlsiMGQlFjH
             const string userID = "spotify";
             const string playlistID = "37i9dQZF1DXcF6B6QPhFDv"; // "7ydOkN0ppweUlsiMGQlFjH" //dev 3ExiQTtIAHceYJYXfI5ysH //prod
             var afterDate = new DateTime(2017, 10, 10);

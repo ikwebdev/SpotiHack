@@ -102,5 +102,11 @@
   <ItemGroup>
     <Content Include="spotihack.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SpotiHackLib\SpotiHackLib.csproj">
+      <Project>{967a1259-4ec7-4e95-bd8d-f5f9e4b942fc}</Project>
+      <Name>SpotiHackLib</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -19,10 +19,74 @@ namespace SpotiHack
 {
     class Program
     {
+        static string UserID = String.Empty;
+        static string PlaylistID = "String.Empty"; // "7ydOkN0ppweUlsiMGQlFjH" //dev 3ExiQTtIAHceYJYXfI5ysH //prod
+        static DateTime AfterDate = DateTime.MinValue;
+
         static AutorizationCodeAuth auth;
         static void Main(string[] args)
         {
+            Console.WriteLine("--# SpotiHack v0.1 #--");
             Console.WriteLine("Welcome bratishka at " + DateTime.Now.TimeOfDay);
+
+            int userInput = 0;
+            do
+            {
+                userInput = DisplayMenu();
+
+                switch (userInput)
+                {
+                    case (int)MenuItem.SpotifyPlaylist:
+                        StartSpotifyPlaylist();
+                        break;
+                    case (int)MenuItem.YoutubeLink:
+                        StartSpotifyPlaylist();
+                        break;
+                }
+                    
+            } while (userInput != (int)MenuItem.Exit);
+
+        }
+
+        static public int DisplayMenu()
+        {
+            Console.WriteLine();
+            Console.WriteLine((int)MenuItem.SpotifyPlaylist + ". Download spotify playlist");
+            Console.WriteLine((int)MenuItem.YoutubeLink + ". Download mp3 from youtube link");
+
+            Console.WriteLine((int)MenuItem.Exit + ". Exit");
+            var result = Console.ReadLine();
+            return Convert.ToInt32(result);
+        }
+
+        private static void StartSpotifyPlaylist()
+        {
+            Console.WriteLine("Playlist URL:");
+            var playlistUrl = Console.ReadLine();
+
+            if (!IsValidUrl(playlistUrl))
+            {
+                Console.WriteLine("Not valid url");
+                return;
+            }
+               
+
+            var playlistUrlSegments = new Uri(playlistUrl).Segments;
+
+            UserID = playlistUrlSegments[2].Replace(@"/", string.Empty);
+            PlaylistID = playlistUrlSegments[4].Replace(@"/", string.Empty);
+
+            Console.WriteLine("Date from:");
+            var dateFrom = Console.ReadLine();
+
+            if (!DateTime.TryParse(dateFrom, out DateTime parsedDate))
+            {
+                Console.WriteLine("Not valid date");
+                return;
+            }
+                
+            AfterDate = parsedDate;
+
             auth = new AutorizationCodeAuth()
             {
                 //Your client Id
@@ -33,7 +97,7 @@ namespace SpotiHack
                 Scope = Scope.UserReadPrivate,
             };
             //This will be called, if the user cancled/accept the auth-request
-            auth.OnResponseReceivedEvent += auth_OnResponseReceivedEvent;
+            auth.OnResponseReceivedEvent += Auth_OnResponseReceivedEvent;
             //a local HTTP Server will be started (Needed for the response)
             auth.StartHttpServer(7777);
             //This will open the spotify auth-page. The user can decline/accept the request
@@ -42,7 +106,14 @@ namespace SpotiHack
             Thread.Sleep(60000);
         }
 
-        private static void auth_OnResponseReceivedEvent(AutorizationCodeAuthResponse response)
+        private static bool IsValidUrl(string url)
+        {
+            Uri uriResult;
+            return Uri.TryCreate(url, UriKind.Absolute, out uriResult)
+                && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);  
+        }
+
+        private static void Auth_OnResponseReceivedEvent(AutorizationCodeAuthResponse response)
         {
             auth.StopHttpServer();
 
@@ -56,16 +127,14 @@ namespace SpotiHack
 
             /* CONSTS */
             //TODO: Parse playlist link like https://open.spotify.com/user/12101170232/playlist/7ydOkN0ppweUlsiMGQlFjH
-            const string userID = "spotify";
-            const string playlistID = "37i9dQZF1DXcF6B6QPhFDv"; // "7ydOkN0ppweUlsiMGQlFjH" //dev 3ExiQTtIAHceYJYXfI5ysH //prod
-            var afterDate = new DateTime(2017, 10, 10);
+            
             //var afterDate = new DateTime(2017, 11, 20);
             /**/
 
-            var tracks = spotify.GetPlaylistTracks(userID, playlistID);
+            var tracks = spotify.GetPlaylistTracks(UserID, PlaylistID);
             var tracksList = new List<TrackModel>();
 
-            tracks.Items = tracks.Items.Where(da => da.AddedAt >= afterDate).ToList();
+            tracks.Items = tracks.Items.Where(da => da.AddedAt >= AfterDate).ToList();
 
             if (tracks.Total >= 100)
             {
@@ -78,8 +147,8 @@ namespace SpotiHack
                         Name = track.Track.Name,
                         Images = track.Track.Album.Images
                     }));
-                    tracks = spotify.GetPlaylistTracks(userID, playlistID, "", 100, i);
-                    tracks.Items = tracks.Items.OrderByDescending(d => d.AddedAt).Where(da => da.AddedAt >= afterDate).ToList();
+                    tracks = spotify.GetPlaylistTracks(UserID, PlaylistID, "", 100, i);
+                    tracks.Items = tracks.Items.OrderByDescending(d => d.AddedAt).Where(da => da.AddedAt >= AfterDate).ToList();
                 }
             }
             else
@@ -175,10 +244,10 @@ namespace SpotiHack
 
                     var mp3File = webClient.DownloadData(mp3Url);
 
-                    Directory.CreateDirectory(@"../../../Downloads/");
+                    Directory.CreateDirectory(@"Downloads/");
 
                     FileStream fileStream = new FileStream(
-                      $@"../../../Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
+                      $@"Downloads/{fileName}.mp3", FileMode.OpenOrCreate,
                       FileAccess.ReadWrite, FileShare.None);
                     fileStream.Write(mp3File, 0, mp3File.Length);
                     fileStream.Close();
@@ -186,7 +255,7 @@ namespace SpotiHack
 
                     //Set tags
 
-                    var fileForTags = TagLib.File.Create($@"../../../Downloads/{fileName}.mp3"); // Change file path accordingly.
+                    var fileForTags = TagLib.File.Create($@"Downloads/{fileName}.mp3"); // Change file path accordingly.
 
                     fileForTags.Tag.Title = track.Name;
                     fileForTags.Tag.Album = track.Album;
@@ -237,5 +306,12 @@ namespace SpotiHack
         public string Album { get; set; }
         public string Name { get; set; }
         public List<Image> Images { get; set; }
+    }
+
+    public enum MenuItem
+    {
+       SpotifyPlaylist = 1,
+       YoutubeLink = 2,
+       Exit = 0
     }
 }

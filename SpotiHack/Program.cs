@@ -1,20 +1,7 @@
-﻿using CsQuery;
-using Google.Apis.Services;
-using Google.Apis.YouTube.v3;
-using SpotifyAPI.Web;
-using SpotifyAPI.Web.Auth;
-using SpotifyAPI.Web.Enums;
-using SpotiHackLib;
+﻿using SpotiHackLib;
 using SpotiHackLib.Services;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using TagLib;
+
 
 namespace SpotiHack
 {
@@ -52,6 +39,7 @@ namespace SpotiHack
 
             Console.WriteLine((int)MenuItem.Exit + ". Exit");
             var result = Console.ReadLine();
+            if (String.IsNullOrEmpty(result)) result = "999";
             return Convert.ToInt32(result);
         }
 

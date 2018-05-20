@@ -103,7 +103,7 @@ namespace SpotiHackLib.Services
 
                     var mp3Url = cq["a.q320"].FirstOrDefault().GetAttribute("href");
 
-                    Console.WriteLine(DateTime.Now.TimeOfDay + " STARTED: " + fileName);
+                    Console.WriteLine(DateTime.Now.TimeOfDay + " STARTED: " + fileName + " from: https://www.youtube.com/watch?v=" + videoId);
 
                     var mp3File = webClient.DownloadData(mp3Url);
 
@@ -140,7 +140,7 @@ namespace SpotiHackLib.Services
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(DateTime.Now.TimeOfDay + " ERROR: when downloading or writing " + fileName);
-                Console.WriteLine("Details: " + e.Message + Environment.NewLine + e.StackTrace);
+                Console.WriteLine("Details: " + e.Message + Environment.NewLine + e.StackTrace + Environment.NewLine + e.InnerException);
                 Console.ResetColor();
             }
 

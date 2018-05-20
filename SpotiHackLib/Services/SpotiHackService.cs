@@ -82,7 +82,7 @@ namespace SpotiHackLib
                 {
                     Artist = track.Track.Artists.FirstOrDefault().Name,
                     Album = track.Track.Album.Name,
-                    Name = track.Track.Album.Name,
+                    Name = track.Track.Name,
                     Images = track.Track.Album.Images
                 }));
             }

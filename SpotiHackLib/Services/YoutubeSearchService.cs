@@ -105,7 +105,7 @@ namespace SpotiHackLib.Services
 
                     Console.WriteLine(DateTime.Now.TimeOfDay + " STARTED: " + fileName + " from: https://www.youtube.com/watch?v=" + videoId);
 
-                    var mp3File = webClient.DownloadData("https:" + mp3Url);
+                    var mp3File = webClient.DownloadData(mp3Url);
 
                     Directory.CreateDirectory(@"Downloads/");
 
